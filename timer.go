@@ -18,8 +18,8 @@ type Randomtick struct {
 
 // Stop terminates the ticker goroutine and closes the C channel.
 func (rt *Randomtick) Stop() {
-	c := make(chan struct{})
-	rt.stopCh <- c
+	c := make(chan int)
+	rt.StopCh <- c
 	<-c
 }
 
@@ -33,9 +33,9 @@ func (rt *Randomtick) runTick() {
 			t.Stop()
 			close(c)
 			return
-		case <-t.Ch:
+		case <-t.C:
 			select {
-			case rt.Ch <- time.Now():
+			case rt.Ch <- int(time.Now().Unix()):
 				t.Stop()
 				t = time.NewTimer(rt.nextInterval())
 			default:
@@ -49,16 +49,16 @@ func (rt *Randomtick) runTick() {
 // RandomTicker. Min and max are durations of the shortest and longest allowed
 func NewUltimateRandomTick(msMin, msMax time.Duration) *Randomtick {
 	rt := &Randomtick{
-		Ch:     make(chan int, 10),
-		MsMin:  msMin.Nanoseconds(),
-		MsMax:  msMax.Nanoseconds(),
-		StopCh: make(chan int, 1),
+		Ch:     make(chan int),
+		MsMin:  time.Duration(msMin.Nanoseconds()),
+		MsMax:  time.Duration(msMax.Nanoseconds()),
+		StopCh: make(chan int),
 	}
 	go rt.runTick()
 	return rt
 }
 
-func (rt *RandomTicker) nextInterval() time.Duration {
-	interval := rand.Int63n(rt.MsMax-rt.MsMin) + rt.MsMin
+func (rt *Randomtick) nextInterval() time.Duration {
+	interval := time.Duration(rand.Int63n(int64(rt.MsMax-rt.MsMin))) + rt.MsMin
 	return time.Duration(interval) * time.Nanosecond
 }
